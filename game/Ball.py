@@ -8,8 +8,8 @@ class Ball:
     def __init__(self):
         self.pos = (0, 0)
         self.dir = 0
-        self.speed = 13
-        self.radius = 6
+        self.speed = 10
+        self.radius = 5
 
     def move(self):
         vel = self.vel
