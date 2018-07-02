@@ -1,6 +1,7 @@
 import math
 import pygame
 
+
 class Ball:
     color = (255, 255, 255)
 
@@ -11,7 +12,12 @@ class Ball:
         self.radius = 5
 
     def move(self):
-        self.pos = (self.pos[0] - self.speed * math.cos(self.dir), self.pos[1] - self.speed * math.sin(self.dir))
+        vel = self.vel
+        self.pos = (self.pos[0] - vel[0], self.pos[1] - vel[1])
+
+    @property
+    def vel(self):
+        return self.speed * math.cos(self.dir), self.speed * math.sin(self.dir)
 
     @property
     def rect(self):

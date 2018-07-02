@@ -5,7 +5,7 @@ import pygame
 game = Game()
 
 while game.isRunning:
-    game.draw()
+
     if game.isPlaying:
         game.move_player()
         game.move_ball()
@@ -13,8 +13,7 @@ while game.isRunning:
     for event in pygame.event.get():
             game.check(event)
 
-    pygame.display.update()
-    game.clock.tick(60)
-
-
-
+    if game.trainingIterations > 10000:
+        game.draw()
+        pygame.display.update()
+        game.clock.tick(60)
