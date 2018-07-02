@@ -8,42 +8,46 @@ from sklearn.preprocessing import normalize
 
 
 class Game:
-    width = 500
-    height = 300
+    width = int((3 / 2) * 500)
+    height = int((3 / 2) * 300)
     isRunning = True
     isPlaying = False
-    isAutoPilot = True
     trainingIterations = 0
+    loading = False
 
-    def __init__(self):
-        self.players = [Player(), Player()]
+    def __init__(self, loading=False):
+        self.players = [Player(self.height), Player(self.height)]
         self.ball = Ball()
+
+        if loading:
+            for i in range(len(self.players)):
+                self.players[i].load('game/q_best/q_weights%d' % i, 'game/q_best/q_biases%d' % i)
 
         pygame.init()
 
         self.gameDisplay = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
-        self.font = self.font = pygame.font.SysFont("monospace", 5)
+        self.font = pygame.font.Font("assets/ATARCC__.TTF", 40)
 
         self.start()
 
     def check(self, event):
-
         if event.type == pygame.QUIT:
             self.isRunning = False
-
         elif event.type == pygame.KEYDOWN:
-            if not self.isAutoPilot:
+            if not self.players[0].isAi:
+                if event.key == pygame.K_w:
+                    self.players[0].dir = 1
+                elif event.key == pygame.K_s:
+                    self.players[0].dir = -1
+            if not self.players[1].isAi:
                 if event.key == pygame.K_UP:
                     self.players[1].dir = 1
                 elif event.key == pygame.K_DOWN:
                     self.players[1].dir = -1
-
             if event.key == pygame.K_RETURN:
                 if not self.isPlaying:
                     self.isPlaying = True
-            elif event.key ==  pygame.K_a:
-                self.isAutoPilot = not self.isAutoPilot
             elif event.key == pygame.K_SPACE:
                 self.trainingIterations = 0
 
@@ -56,63 +60,66 @@ class Game:
     def start(self):
         self.trainingIterations += 1
         self.isPlaying = False
+
+        # choose random direction in range for ball to start with
         rand = random.uniform(math.pi / 5, 1)
         randVert = random.choice([-1, 1])
         randSide = random.choice([0, math.pi])
-        self.ball.dir = (rand * randVert) + randSide
 
+        self.ball.dir = (rand * randVert) + randSide
         self.ball.pos = (self.width / 2, self.height / 2)
 
         startHeight = (self.height - self.players[0].height) / 2
         self.players[0].pos = (1, startHeight)
         self.players[1].pos = (self.width - self.players[1].width - 1, startHeight)
+
         self.players[0].scored = False
         self.players[1].scored = False
 
         self.isPlaying = True
 
     def move_player(self):
-        if self.isAutoPilot:
-            self.train(1, 0.05)
-        else:
-            for player in self.players:
-                nextPos = (player.pos[0], player.pos[1] - player.dir * player.speed)
-                if nextPos[1] >= 0 and nextPos[1] <= self.height - player.height:
-                    player.move(player.dir)
+        for player in self.players:
+            if player.scored:
+                self.start()
+                return
 
-        self.train(0, 0.05)
+            if player.isAi:
+                if player.isTraining:
+                    self.train(0.05, player)
+                else:
+                    player.move(self.get_features(player))
+            else:
+                player.move()
 
         self.players[0].hit = False
         self.players[1].hit = False
 
-    def train(self, n, epsilon):
-        player = self.players[n]
-        opponent = self.players[1 - n]
+    def get_features(self, player):
+        return normalize(np.array(
+            [[player.pos[1], self.ball.pos[0], self.ball.pos[1], self.ball.vel[0],
+             self.ball.vel[1], self.ball.speed]]))
+
+    def train(self,  epsilon, p):
+        player = p
+        opponent = [pad for pad in self.players if not pad == p][0]
         ball = self.ball
 
-        sample = ()  # initialize a sample
+        features = self.get_features(player)
 
-        features = normalize(np.array(
-            [[player.pos[0], player.pos[1], opponent.pos[0], opponent.pos[1], ball.pos[0], ball.pos[1], ball.vel[0],
-             ball.vel[1]]]))
-
-        qActionValues = player.agentAI.qApproximate.predict(features)
+        # take random action with probability epsilon
         rand = random.uniform(0, 1)
         if rand < epsilon:
-            a = random.randint(0,2)
+            a = random.randint(0, 2)
+            player.dir = -(a - 1)
+            player.move()
         else:
-            a = np.argmax(qActionValues)
+            player.move(features=features)
 
-        nextPos = (player.pos[0], player.pos[1] + (a - 1) * player.speed)
-        if nextPos[1] >= 0 and nextPos[1] <= self.height - player.height:
-            a = a
-        else:
-            a = 1
+        a = -player.dir + 1
 
-        player.move(-(a - 1))  # move player with action a
-        newFeatures = normalize(np.array([
-            [player.pos[0], player.pos[1], opponent.pos[0], opponent.pos[1], ball.pos[0], ball.pos[1], ball.vel[0],
-             ball.vel[1]]]))
+        # get new state
+        newFeatures = self.get_features(player)
 
         reward = player.agentAI.livingReward
         if player.scored:
@@ -160,4 +167,10 @@ class Game:
             pygame.draw.rect(self.gameDisplay, player.color, player.rect)
 
         pygame.draw.circle(self.gameDisplay, self.ball.color, (int(self.ball.pos[0]), int(self.ball.pos[1])),
-                       self.ball.radius)
+                           self.ball.radius)
+
+        # render scores
+        score1Label = self.font.render("%d" % self.players[0].score, 1, (255, 255, 255))
+        self.gameDisplay.blit(score1Label, (self.width/2 - 45, 10))
+        score2Label = self.font.render("%d" % self.players[1].score, 1, (255, 255, 255))
+        self.gameDisplay.blit(score2Label, (self.width / 2 + 5, 10))

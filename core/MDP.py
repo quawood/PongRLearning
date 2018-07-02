@@ -14,12 +14,14 @@ class MDP:
         reward = sample[2]
         newState = sample[3]
 
-        newPredict = self.qApproximate.predict(newState, static=True)
+        newPredict = self.qApproximate.predict(newState)
         predict = self.qApproximate.predict(previousState)
-        difference = reward + self.gamma * np.max(newPredict) - predict
-        self.qApproximate.updateWeights(-difference, self.alpha)
+        difference = reward + self.gamma * np.max(newPredict) - predict[0, action]
+        difVector = np.zeros((1, 3))
+        difVector[0, action] = difference
+        self.qApproximate.update_weights(-difVector, self.alpha)
 
     def to_exit(self, state, reward):
         predict = self.qApproximate.predict(state)
         difference = reward - predict
-        self.qApproximate.updateWeights(-difference, self.alpha)
+        self.qApproximate.update_weights(-difference, self.alpha)

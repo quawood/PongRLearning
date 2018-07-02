@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from core.Layer import Layer
 
 
@@ -32,7 +31,7 @@ class NeuralNetwork:
 
         self.previousError = 0
 
-    def predict(self, X, static=False):
+    def predict(self, X):
         # X is m x nFeatures shape
         inputLayer = self.layers[0]
         inputLayer.activation = X
@@ -45,7 +44,7 @@ class NeuralNetwork:
 
         return self.layers[-1].activation
 
-    def updateWeights(self, difference, alpha):
+    def update_weights(self, difference, alpha):
         self.layers[-1].delta = difference
 
         for ind in range(len(self.weightsSet), 0, -1):
@@ -54,8 +53,8 @@ class NeuralNetwork:
             nextLayer = self.layers[weightsInd]
 
             self.layers[weightsInd].delta = currentLayer.delta.dot(self.weightsSet[weightsInd].T)
-            self.weightsSet[weightsInd] = self.weightsSet[weightsInd] - alpha * (nextLayer.activation.T.dot(currentLayer.delta))
-            self.biasSet[weightsInd] = self.biasSet[weightsInd] - alpha * np.sum(currentLayer.delta, axis=0)
+            self.weightsSet[weightsInd] -= alpha * (nextLayer.activation.T.dot(currentLayer.delta))
+            self.biasSet[weightsInd] -= alpha * np.sum(currentLayer.delta, axis=0)
 
     def train(self, X, y, max_iterations):
         iteration = 0
@@ -63,8 +62,5 @@ class NeuralNetwork:
             predict = self.predict(X)
             difference = predict - y
 
-            self.updateWeights(difference, 0.001)
+            self.update_weights(difference, 0.001)
             iteration += 1
-
-    def get_error(self, prediction, y):
-        return sum_squared_errors(prediction, y)
