@@ -2,7 +2,7 @@ from game.Game import Game
 import pygame
 
 
-game = Game(loading=True)
+game = Game(loading=False)
 game.players[0].isAi = True
 game.players[0].isTraining = True
 game.players[1].isAi = True
@@ -23,6 +23,7 @@ while game.isRunning:
                 print(game.trainingIterations)
                 game.isRunning = False
             game.check(event)
+        
         game.draw()
         pygame.display.update()
         game.clock.tick(60)

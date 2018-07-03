@@ -92,7 +92,7 @@ class Game:
 
             if player.isAi:
                 if player.isTraining:
-                    self.train(player, 1)
+                    self.train(player, 0.2)
                 else:
                     player.move(features=self.get_features(player))
             else:
@@ -121,6 +121,8 @@ class Game:
         newFeatures = self.get_features(player)
 
         reward = player.agentAI.livingReward
+        if not player.prevDir == player.dir:
+            reward -= -1
         if player.scored:
             reward = 100
             player.agentAI.to_exit(features, reward)

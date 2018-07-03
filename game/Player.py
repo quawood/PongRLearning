@@ -16,6 +16,7 @@ class Player:
         self.pos = (0, pos)
         self.speed = 8
         self.dir = 0
+        self.prevDir = 0
         self.score = 0
         self.scored = False
         self.hit = False
@@ -25,7 +26,10 @@ class Player:
         self.agentAI = MDP(0, 1, 0.01)
         self.agentAI.qApproximate = NeuralNetwork([6, 3])
 
+        self.prevDir = 0
+
     def move(self, direction=None, features=None):
+        self.prevDir = self.dir
         if features is not None:
             qActionValues = self.agentAI.qApproximate.predict(features)
             a = np.argmax(qActionValues)
