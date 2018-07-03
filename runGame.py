@@ -2,19 +2,19 @@ from game.Game import Game
 import pygame
 
 
-game = Game(loading=False)
+game = Game(loading=True)
 game.players[0].isAi = True
-game.players[0].isTraining = True
 game.players[1].isAi = True
-game.players[1].isTraining = True
-training = True
+game.training = True
 
 while game.isRunning:
     if game.isPlaying:
         game.move_ball()
         game.move_players()
 
-    if training:
+    if game.training:
+        game.players[0].isTraining = True
+        game.players[1].isTraining = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 for i in range(len(game.players)):
@@ -22,8 +22,16 @@ while game.isRunning:
 
                 print(game.trainingIterations)
                 game.isRunning = False
+                break
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    game.training = False
+
+    else:
+        game.players[0].isTraining = False
+        game.players[1].isTraining = False
+        for event in pygame.event.get():
             game.check(event)
-        
         game.draw()
         pygame.display.update()
         game.clock.tick(60)

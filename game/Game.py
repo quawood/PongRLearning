@@ -14,7 +14,7 @@ class Game:
     isPlaying = False
     trainingIterations = 0
     loading = False
-
+    training = False
     def __init__(self, loading=False):
         self.players = [Player(self.height), Player(self.height)]
         self.ball = Ball()
@@ -53,7 +53,8 @@ class Game:
                 if not self.isPlaying:
                     self.isPlaying = True
             elif event.key == pygame.K_SPACE:
-                self.trainingIterations = 0
+                if not self.training:
+                    self.training = True
 
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
