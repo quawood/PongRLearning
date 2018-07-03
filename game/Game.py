@@ -12,12 +12,11 @@ class Game:
     height = 300
     isRunning = True
     isPlaying = False
-    isAutoPilot = True
     trainingIterations = 0
     loading = False
 
     def __init__(self, loading=False):
-        self.players = [Player(), Player()]
+        self.players = [Player(self.height), Player(self.height)]
         self.ball = Ball()
 
         if loading:
@@ -40,12 +39,16 @@ class Game:
             self.isRunning = False
 
         elif event.type == pygame.KEYDOWN:
-            if not self.isAutoPilot:
+            if not self.players[1].isAi:
                 if event.key == pygame.K_UP:
-                    self.players[1].dir = 1
-                elif event.key == pygame.K_DOWN:
                     self.players[1].dir = -1
-
+                elif event.key == pygame.K_DOWN:
+                    self.players[1].dir = 1
+            if not self.players[0].isAi:
+                if event.key == pygame.K_w:
+                    self.players[0].dir = -1
+                elif event.key == pygame.K_s:
+                    self.players[0].dir = 1
             if event.key == pygame.K_RETURN:
                 if not self.isPlaying:
                     self.isPlaying = True
@@ -66,8 +69,8 @@ class Game:
         rand = random.uniform(math.pi / 5, 1)
         randVert = random.choice([-1, 1])
         randSide = random.choice([0, math.pi])
-        self.ball.dir = (rand * randVert) + randSide
 
+        self.ball.dir = (rand * randVert) + randSide
         self.ball.pos = (self.width / 2, self.height / 2)
 
         startHeight = (self.height - self.players[0].height) / 2
@@ -78,56 +81,56 @@ class Game:
 
         self.isPlaying = True
 
-    def move_player(self):
-        if self.isAutoPilot:
-            self.train(1, 0.05)
-        else:
-            for player in self.players:
-                nextPos = (player.pos[0], player.pos[1] - player.dir * player.speed)
-                if 0 <= nextPos[1] <= self.height - player.height:
-                    player.move(player.dir)
+    def get_features(self, player):
+        return normalize(np.array(
+            [[player.pos[1], self.ball.pos[0], self.ball.pos[1], self.ball.vel[0],
+             self.ball.vel[1], self.ball.speed]]))
 
-        self.train(0, 0.05)
+    def move_players(self):
+        scored = False
+        for player in self.players:
+            if player.score == True:
+                scored = True
+
+            if player.isAi:
+                if player.isTraining:
+                    self.train(player, 0.05)
+                else:
+                    player.move(self.get_features(player))
+            else:
+                player.move(player.dir)
 
         self.players[0].hit = False
         self.players[1].hit = False
 
-    def train(self, n, epsilon):
-        player = self.players[n]
-        opponent = self.players[1 - n]
+        if scored:
+            self.start()
+
+    def train(self, p, epsilon):
+        player = p
+        opponent = [opp for opp in self.players if not opp == player][0]
         ball = self.ball
 
-        features = normalize(np.array(
-            [[player.pos[1], ball.pos[0], ball.pos[1], ball.vel[0],
-             ball.vel[1], ball.speed]]))
+        features = self.get_features(player)
 
-        qActionValues = player.agentAI.qApproximate.predict(features)
         rand = random.uniform(0, 1)
         if rand < epsilon:
             a = random.randint(0, 2)
+            player.move(direction=-(a - 1))
         else:
-            a = np.argmax(qActionValues)
+            player.move(features=features)
 
-        nextPos = (player.pos[0], player.pos[1] + (a - 1) * player.speed)
-        if 0 <= nextPos[1] <= self.height - player.height:
-            a = a
-        else:
-            a = 1
+        a = 1 - (player.dir)
 
-        player.move(-(a - 1))  # move player with action a
-        newFeatures = normalize(np.array([
-            [player.pos[1], ball.pos[0], ball.pos[1], ball.vel[0],
-             ball.vel[1], ball.speed]]))
+        newFeatures = self.get_features(player)
 
         reward = player.agentAI.livingReward
         if player.scored:
             reward = 100
-            self.start()
             player.agentAI.to_exit(features, reward)
             return
         elif opponent.scored:
             reward = -500
-            self.start()
             player.agentAI.to_exit(features, reward)
             return
 
@@ -140,20 +143,23 @@ class Game:
         return
 
     def move_ball(self):
+        ballNextPos = (self.ball.pos[0] + self.ball.vel[0], self.ball.pos[1] + self.ball.vel[1])
+        ballRect = pygame.Rect(ballNextPos, (1, 1))
+
         for player in self.players:
-            if player.rect.contains(self.ball.rect):
+            if player.rect.contains(ballRect):
                 player.hit = True
                 self.ball.dir = -self.ball.dir + math.pi
                 self.ball.move()
                 return
 
-        if self.ball.pos[0] > self.width:
+        if ballNextPos[0] > self.width:
             self.players[0].score += 1
             self.players[0].scored = True
-        elif self.ball.pos[0] < 0:
+        elif ballNextPos[0] < 0:
             self.players[1].score += 1
             self.players[1].scored = True
-        elif self.ball.pos[1] > self.height or self.ball.pos[1] < 0:
+        elif ballNextPos[1] > self.height or ballNextPos[1] < 0:
             self.ball.dir = -self.ball.dir
 
         self.ball.move()

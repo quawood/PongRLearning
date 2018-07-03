@@ -5,12 +5,13 @@ from core.NeuralNet import NeuralNetwork
 
 
 class Player:
-    width = 10
+    width = 20
     height = 100
     color = (255, 255, 255)
     speed = 4
 
-    def __init__(self, pos=0):
+    def __init__(self, gHeight, pos=0):
+        self.gHeight = gHeight
         # initialize player
         self.pos = (0, pos)
         self.speed = 8
@@ -19,16 +20,26 @@ class Player:
         self.scored = False
         self.hit = False
 
+        self.isAi = False
+        self.isTraining = False
         self.agentAI = MDP(0, 1, 0.01)
         self.agentAI.qApproximate = NeuralNetwork([6, 3])
 
-    def move(self, direc):
-        self.dir = direc
-        self.pos = (self.pos[0], self.pos[1] - direc * self.speed)
+    def move(self, direction=None, features=None):
+        if features is not None:
+            qActionValues = self.agentAI.qApproximate.predict(features)
+            self.dir = -1(np.argmax(qActionValues) - 1)
+        if direction is not None:
+            self.dir = direction
+
+        nextPos = (self.pos[0], self.pos[1] + self.dir * self.speed)
+        if not -5 <= nextPos[1] <= self.gHeight - self.height + 5:
+            self.dir = 0
+        self.pos = (self.pos[0], self.pos[1] + self.dir * self.speed)
 
     @property
     def rect(self):
-        return pygame.Rect(self.pos, (self.width, self.height))
+        return pygame.Rect((self.pos[0], self.pos[1]), (self.width, self.height))
 
     def save(self, file1, file2):
         with open(file1, 'wb') as f:
