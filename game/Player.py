@@ -28,18 +28,18 @@ class Player:
     def move(self, direction=None, features=None):
         if features is not None:
             qActionValues = self.agentAI.qApproximate.predict(features)
-            self.dir = -1(np.argmax(qActionValues) - 1)
+            a = np.argmax(qActionValues)
+            self.dir = -(np.argmax(qActionValues) - 1)
         if direction is not None:
             self.dir = direction
-
         nextPos = (self.pos[0], self.pos[1] + self.dir * self.speed)
-        if not -5 <= nextPos[1] <= self.gHeight - self.height + 5:
+        if not self.height - 5 <= nextPos[1] <= self.gHeight + 5:
             self.dir = 0
         self.pos = (self.pos[0], self.pos[1] + self.dir * self.speed)
 
     @property
     def rect(self):
-        return pygame.Rect((self.pos[0], self.pos[1]), (self.width, self.height))
+        return pygame.Rect((self.pos[0], self.gHeight - self.pos[1]), (self.width, self.height))
 
     def save(self, file1, file2):
         with open(file1, 'wb') as f:

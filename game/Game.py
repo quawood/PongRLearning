@@ -27,7 +27,7 @@ class Game:
 
         self.gameDisplay = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
-        self.font = self.font = pygame.font.SysFont("monospace", 5)
+        self.font = pygame.font.Font("assets/ATARCC__.TTF", 40)
 
         self.start()
 
@@ -41,19 +41,17 @@ class Game:
         elif event.type == pygame.KEYDOWN:
             if not self.players[1].isAi:
                 if event.key == pygame.K_UP:
-                    self.players[1].dir = -1
-                elif event.key == pygame.K_DOWN:
                     self.players[1].dir = 1
+                elif event.key == pygame.K_DOWN:
+                    self.players[1].dir = -1
             if not self.players[0].isAi:
                 if event.key == pygame.K_w:
-                    self.players[0].dir = -1
-                elif event.key == pygame.K_s:
                     self.players[0].dir = 1
+                elif event.key == pygame.K_s:
+                    self.players[0].dir = -1
             if event.key == pygame.K_RETURN:
                 if not self.isPlaying:
                     self.isPlaying = True
-            elif event.key == pygame.K_a:
-                self.isAutoPilot = not self.isAutoPilot
             elif event.key == pygame.K_SPACE:
                 self.trainingIterations = 0
 
@@ -73,7 +71,7 @@ class Game:
         self.ball.dir = (rand * randVert) + randSide
         self.ball.pos = (self.width / 2, self.height / 2)
 
-        startHeight = (self.height - self.players[0].height) / 2
+        startHeight = (self.height + self.players[0].height) / 2
         self.players[0].pos = (1, startHeight)
         self.players[1].pos = (self.width - self.players[1].width - 1, startHeight)
         self.players[0].scored = False
@@ -89,27 +87,25 @@ class Game:
     def move_players(self):
         scored = False
         for player in self.players:
-            if player.score == True:
+            if player.scored:
                 scored = True
 
             if player.isAi:
                 if player.isTraining:
-                    self.train(player, 0.05)
+                    self.train(player, 1)
                 else:
-                    player.move(self.get_features(player))
+                    player.move(features=self.get_features(player))
             else:
-                player.move(player.dir)
+                player.move(direction=player.dir)
 
         self.players[0].hit = False
         self.players[1].hit = False
-
         if scored:
             self.start()
 
     def train(self, p, epsilon):
         player = p
         opponent = [opp for opp in self.players if not opp == player][0]
-        ball = self.ball
 
         features = self.get_features(player)
 
@@ -120,7 +116,7 @@ class Game:
         else:
             player.move(features=features)
 
-        a = 1 - (player.dir)
+        a = -player.dir + 1
 
         newFeatures = self.get_features(player)
 
@@ -133,7 +129,6 @@ class Game:
             reward = -500
             player.agentAI.to_exit(features, reward)
             return
-
         if player.hit:
             reward = 50
 
@@ -143,15 +138,25 @@ class Game:
         return
 
     def move_ball(self):
-        ballNextPos = (self.ball.pos[0] + self.ball.vel[0], self.ball.pos[1] + self.ball.vel[1])
+        ballNextPos = (self.ball.pos[0] + self.ball.vel[0], self.height - (self.ball.pos[1] + self.ball.vel[1]))
         ballRect = pygame.Rect(ballNextPos, (1, 1))
 
+        pNum = 0
         for player in self.players:
             if player.rect.contains(ballRect):
+                yIntersect = -(ballNextPos[1] - self.height)
+                relYIntersect = yIntersect - player.pos[1] + player.height / 2
+                normRelYIntersect = 2 * relYIntersect / player.height
+                angle = normRelYIntersect * self.ball.max_angle
+
                 player.hit = True
-                self.ball.dir = -self.ball.dir + math.pi
+                if pNum == 0 :
+                    self.ball.dir = angle
+                else:
+                    self.ball.dir = math.pi - angle
                 self.ball.move()
                 return
+            pNum += 1
 
         if ballNextPos[0] > self.width:
             self.players[0].score += 1
@@ -170,5 +175,11 @@ class Game:
         for player in self.players:
             pygame.draw.rect(self.gameDisplay, player.color, player.rect)
 
-        pygame.draw.circle(self.gameDisplay, self.ball.color, (int(self.ball.pos[0]), int(self.ball.pos[1])),
+        pygame.draw.circle(self.gameDisplay, self.ball.color, (int(self.ball.pos[0]), self.height - int(self.ball.pos[1])),
                            self.ball.radius)
+
+        scoreLabel0 = self.font.render('%d' % (self.players[0].score % 10), 1, (255, 255, 255))
+        scoreLabel1 = self.font.render('%d' % (self.players[1].score % 10), 1, (255, 255, 255))
+        self.gameDisplay.blit(scoreLabel0, (self.width / 2 - 40 - 30, 5))
+        self.gameDisplay.blit(scoreLabel1, (self.width / 2 + 30, 5))
+
