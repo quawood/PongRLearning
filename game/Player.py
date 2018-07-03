@@ -24,7 +24,7 @@ class Player:
         self.isAi = False
         self.isTraining = False
         self.agentAI = MDP(0, 1, 0.01)
-        self.agentAI.qApproximate = NeuralNetwork([6, 3])
+        self.agentAI.qApproximate = NeuralNetwork([5, 3])
 
         self.prevDir = 0
 

@@ -2,16 +2,12 @@ from game.Game import Game
 import pygame
 
 
-game = Game(loading=True)
+game = Game(loading=False)
 game.players[0].isAi = True
 game.players[1].isAi = True
 game.training = True
 
 while game.isRunning:
-    if game.isPlaying:
-        game.move_ball()
-        game.move_players()
-
     if game.training:
         game.players[0].isTraining = True
         game.players[1].isTraining = True
@@ -35,3 +31,6 @@ while game.isRunning:
         game.draw()
         pygame.display.update()
         game.clock.tick(60)
+
+    if game.isPlaying:
+        game.move_players()

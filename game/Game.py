@@ -81,49 +81,53 @@ class Game:
         self.isPlaying = True
 
     def get_features(self, player):
-        return normalize(np.array(
-            [[player.pos[1], self.ball.pos[0], self.ball.pos[1], self.ball.vel[0],
-             self.ball.vel[1], self.ball.speed]]))
+        return np.array(
+            [[player.pos[1] / self.height, self.ball.pos[0] / self.width, self.ball.pos[1] / self.height, self.ball.vel[0] / self.ball.speed,
+             self.ball.vel[1] / self.ball.speed]])
 
     def move_players(self):
         scored = False
+        p = 0
+
+        currentFeatures = [self.get_features(self.players[0]), self.get_features(self.players[1])]
+        self.move_ball()
         for player in self.players:
             if player.scored:
                 scored = True
 
             if player.isAi:
                 if player.isTraining:
-                    self.train(player, 0.2)
+                    self.train(p, 0.2, currentFeatures[p])
                 else:
                     player.move(features=self.get_features(player))
             else:
                 player.move(direction=player.dir)
 
+            p += 1
         self.players[0].hit = False
         self.players[1].hit = False
+
         if scored:
             self.start()
 
-    def train(self, p, epsilon):
-        player = p
-        opponent = [opp for opp in self.players if not opp == player][0]
+    def train(self, i, epsilon, features):
+        player = self.players[i]
+        opponent = self.players[i - 1]
 
-        features = self.get_features(player)
-
+        currentFeatures = features
         rand = random.uniform(0, 1)
         if rand < epsilon:
             a = random.randint(0, 2)
             player.move(direction=-(a - 1))
         else:
-            player.move(features=features)
-
+            player.move(features=currentFeatures)
         a = -player.dir + 1
 
         newFeatures = self.get_features(player)
 
         reward = player.agentAI.livingReward
         if not player.prevDir == player.dir:
-            reward -= -1
+            reward += 0
         if player.scored:
             reward = 100
             player.agentAI.to_exit(features, reward)
@@ -135,7 +139,7 @@ class Game:
         if player.hit:
             reward = 50
 
-        sample = (features, a, reward, newFeatures)
+        sample = (currentFeatures, a, reward, newFeatures)
 
         player.agentAI.updateQ(sample)
         return
@@ -153,7 +157,7 @@ class Game:
                 angle = normRelYIntersect * self.ball.max_angle
 
                 player.hit = True
-                if pNum == 0 :
+                if pNum == 0:
                     self.ball.dir = angle
                 else:
                     self.ball.dir = math.pi - angle
